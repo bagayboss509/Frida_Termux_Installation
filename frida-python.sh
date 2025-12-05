@@ -24,7 +24,7 @@ case "$(uname -m)" in
         ;;
 esac
 
-cd $TMPDIR
+cd "$TMPDIR"
 
 # Update and install required packages
 apt update && pkg upgrade -y
@@ -33,22 +33,33 @@ pkg i -y python git curl && pip install -U setuptools
 # Fetch latest Frida version
 FRIDA_VERSION=$(curl -s https://api.github.com/repos/frida/frida/releases/latest | grep -oP '"tag_name":\s*"\K[^"]+')
 
-# Download Frida devkit
-DEVKIT_URL="https://github.com/frida/frida/releases/latest/download/frida-core-devkit-android-$arch.tar.xz"
-DEVKIT_FILE="frida-core-devkit-android-$arch.tar.xz"
+echo "Dernière version de Frida : $FRIDA_VERSION"
 
+# Construire le nom du fichier avec la version
+DEVKIT_FILE="frida-core-devkit-$FRIDA_VERSION-android-$arch.tar.xz"
+
+# Construire l'URL de téléchargement
+DEVKIT_URL="https://github.com/frida/frida/releases/download/$FRIDA_VERSION/$DEVKIT_FILE"
+
+# Télécharger le devkit
 curl -L -o "$DEVKIT_FILE" "$DEVKIT_URL"
 
-# Extract devkit
+# Vérifier si le téléchargement a réussi
+if [ ! -f "$DEVKIT_FILE" ]; then
+    echo "Échec du téléchargement de $DEVKIT_FILE"
+    exit 1
+fi
+
+# Extraire le devkit
 mkdir -p devkit && tar -xJvf "$DEVKIT_FILE" -C devkit
 
-# Clone and install Frida Python
+# Cloner et installer Frida Python
 git clone -b 16.6.6 --depth 1 https://github.com/frida/frida-python.git
 
-# fix setup.py
+# Fix setup.py
 cd frida-python
 curl -LO https://raw.githubusercontent.com/bagayboss509/Frida_Termux_Installation/refs/heads/main/frida-python.patch
 patch -p1 < frida-python.patch
 
-#install frida-python
+# Installer frida-python
 FRIDA_VERSION="$FRIDA_VERSION" FRIDA_CORE_DEVKIT="$PWD/../devkit" pip install --force-reinstall .
